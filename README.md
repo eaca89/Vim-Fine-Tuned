@@ -80,6 +80,31 @@ To evaluate `Vim-Ti` on ImageNet-1K, run:
 ```bash
 python main.py --eval --resume /path/to/ckpt --model vim_tiny_patch16_224_bimambav2_final_pool_mean_abs_pos_embed_with_midclstok_div2 --data-path /path/to/imagenet
 ```
+
+# How to run Visual mamba Code
+```bash
+git clone https://github.com/hustvl/Vim.git
+conda create --name vim python=3.10.13
+conda activate vim
+# Install CUDA 11.8
+pip install torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu118
+# Install nvcc (CUDA Compiler)
+conda install -c nvidia cuda-nvcc=11.8
+pip install -r vim/vim_requirements.txt
+
+#
+wget https://github.com/Dao-AILab/causal-conv1d/releases/download/v1.1.3.post1/causal_conv1d-1.1.3.post1+cu118torch2.1cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+wget https://github.com/state-spaces/mamba/releases/download/v1.1.1/mamba_ssm-1.1.1+cu118torch2.1cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+
+pip install causal_conv1d-1.1.3.post1+cu118torch2.1cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+pip install mamba_ssm-1.1.1+cu118torch2.1cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+
+# Then replace the mamba_ssm installed in the conda environment with the mamba_ssm in the official project:
+cp -rf mamba-1p1p1/mamba_ssm /home/eh_abdol/.conda/envs/vim/lib/python3.10/site-packages
+```
+
+
+
 ## Acknowledgement :heart:
 This project is based on Mamba ([paper](https://arxiv.org/abs/2312.00752), [code](https://github.com/state-spaces/mamba)), Causal-Conv1d ([code](https://github.com/Dao-AILab/causal-conv1d)), DeiT ([paper](https://arxiv.org/abs/2012.12877), [code](https://github.com/facebookresearch/deit)). Thanks for their wonderful works.
 
