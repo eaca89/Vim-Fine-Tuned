@@ -220,13 +220,16 @@ def get_args_parser():
 
 
 def main(args):
+    # Initialize distributed training mode
     utils.init_distributed_mode(args)
 
     print(args)
 
+    # Check for unsupported configurations
     if args.distillation_type != 'none' and args.finetune and not args.eval:
         raise NotImplementedError("Finetuning with distillation not yet supported")
 
+    # Set the device (CPU or GPU)
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
@@ -235,18 +238,22 @@ def main(args):
     np.random.seed(seed)
     # random.seed(seed)
 
+    # Enable CUDNN benchmarking for better performance
     cudnn.benchmark = True
 
     # log about
+    # Start MLflow run for logging (if on main process)
     run_name = args.output_dir.split("/")[-1]
     if args.local_rank == 0 and args.gpu == 0:
         mlflow.start_run(run_name=run_name)
         for key, value in vars(args).items():
             mlflow.log_param(key, value)
 
+    # Build datasets for training and validation
     dataset_train, args.nb_classes = build_dataset(is_train=True, args=args)
     dataset_val, _ = build_dataset(is_train=False, args=args)
 
+    # Set up samplers for distributed training
     if args.distributed:
         num_tasks = utils.get_world_size()
         global_rank = utils.get_rank()
@@ -281,6 +288,7 @@ def main(args):
     if args.ThreeAugment:
         data_loader_train.dataset.transform = new_data_aug_generator(args)
 
+    # Create data loaders for training and validation
     data_loader_val = torch.utils.data.DataLoader(
         dataset_val, sampler=sampler_val,
         batch_size=int(1.5 * args.batch_size * 20),
@@ -289,6 +297,7 @@ def main(args):
         drop_last=False
     )
 
+    # Set up mixup augmentation if specified
     mixup_fn = None
     mixup_active = args.mixup > 0 or args.cutmix > 0. or args.cutmix_minmax is not None
     if mixup_active:
@@ -297,6 +306,7 @@ def main(args):
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
 
+    # Create the model
     print(f"Creating model: {args.model}")
     model = create_model(
         args.model,
@@ -309,6 +319,7 @@ def main(args):
     )
 
                     
+    # Handle fine-tuning if specified
     if args.finetune:
         if args.finetune.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -369,6 +380,7 @@ def main(args):
             
     model.to(device)
 
+    # Create EMA model if specified
     model_ema = None
     if args.model_ema:
         # Important to create EMA model after cuda(), DP wrapper, and AMP but before SyncBN and DDP wrapper
@@ -378,6 +390,7 @@ def main(args):
             device='cpu' if args.model_ema_force_cpu else '',
             resume='')
 
+    # Set up distributed data parallel if using multiple GPUs
     model_without_ddp = model
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
@@ -385,20 +398,23 @@ def main(args):
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('number of params:', n_parameters)
 
+    # Set up learning rate scaling
     if not args.unscale_lr:
         linear_scaled_lr = args.lr * args.batch_size * utils.get_world_size() / 512.0
         args.lr = linear_scaled_lr
     optimizer = create_optimizer(args, model_without_ddp)
     
-    # amp about
+    # Set up AMP (Automatic Mixed Precision) if specified
     amp_autocast = suppress
     loss_scaler = "none"
     if args.if_amp:
         amp_autocast = torch.cuda.amp.autocast
         loss_scaler = NativeScaler()
 
+    # Create learning rate scheduler
     lr_scheduler, _ = create_scheduler(args, optimizer)
 
+    # Set up loss function
     criterion = LabelSmoothingCrossEntropy()
 
     if mixup_active:
@@ -412,6 +428,7 @@ def main(args):
     if args.bce_loss:
         criterion = torch.nn.BCEWithLogitsLoss()
         
+    # Set up knowledge distillation if specified
     teacher_model = None
     if args.distillation_type != 'none':
         assert args.teacher_path, 'need to specify teacher-path when using distillation'
