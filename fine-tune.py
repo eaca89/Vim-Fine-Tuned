@@ -185,7 +185,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(
     filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate)  # 1e-4
 
-def train_model(model, train_loader, validation_loader, criterion, optimizer, num_epochs=10, device='cuda'):
+def train_model(model, train_loader, validation_loader, criterion, optimizer, num_epochs=args.num_epochs, device='cuda'):
     model.to(device)
 
     # Lists to store metrics for plotting
@@ -193,7 +193,7 @@ def train_model(model, train_loader, validation_loader, criterion, optimizer, nu
     train_accs = []
     val_accs = []
 
-    for epoch in range(args.num_epochs):
+    for epoch in range(num_epochs):
         model.train()  # Set model to training mode
         running_loss = 0.0
         correct = 0
@@ -293,7 +293,7 @@ def plot_training_curves(train_losses, train_accs, val_accs):
 
 # Fine-tune the model
 train_model(model, train_loader, validation_loader,
-            criterion, optimizer, num_epochs=10)
+            criterion, optimizer, num_epochs=args.num_epochs)
 
 from sklearn.metrics import classification_report
 
