@@ -32,7 +32,7 @@ import utils
 # log about
 import mlflow
 
-
+# This script is typically where command-line arguments are defined and parsed
 def get_args_parser():
     parser = argparse.ArgumentParser('DeiT training and evaluation script', add_help=False)
     parser.add_argument('--batch-size', default=64, type=int)
