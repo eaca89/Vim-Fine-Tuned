@@ -1,5 +1,6 @@
 #!/bin/bash
-# conda activate Vim
+. ~/.bashrc
+conda activate vim
 # cd /home/eh_abdol/Vim/vim
 
 # Define paths and parameters
